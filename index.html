@@ -34,9 +34,9 @@
 
     /* ── Calendar ── */
     .calendar{padding:6px}
-    .weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px}
+    .weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;margin-bottom:3px}
     .weekday{text-align:center;font-size:11px;font-weight:600;color:#8e8e93;padding:3px 0}
-    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .days-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
 
     /* Day cell — full color background */
     .day-cell{background:#f0f0f5;border-radius:10px;padding:5px 4px;min-height:66px;cursor:pointer;position:relative;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s;-webkit-user-select:none;user-select:none}
@@ -57,30 +57,30 @@
     /* Convocação badge */
     .day-conv-badge{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.25);color:#fff;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4}
 
-    /* Shift colors — full cell background */
-    .s-morning   {background:#FFB300;color:#fff}
-    .s-morning .day-number{color:#fff}
-    .s-morning.sunday .day-number{color:#ffe0b2}
-    .s-afternoon {background:#F4511E;color:#fff}
-    .s-afternoon .day-number{color:#fff}
-    .s-afternoon.sunday .day-number{color:#ffccbc}
-    .s-night     {background:#3949AB;color:#fff}
-    .s-night .day-number{color:#fff}
-    .s-night.sunday .day-number{color:#c5cae9}
-    .s-off       {background:#ECEFF1;color:#607D8B}
-    .s-off .day-number{color:#607D8B}
-    .s-off.sunday .day-number{color:#ff3b30}
-    .s-vacation  {background:#43A047;color:#fff}
-    .s-vacation .day-number{color:#fff}
-    .s-vacation.sunday .day-number{color:#c8e6c9}
-    .s-holiday   {background:#E53935;color:#fff}
-    .s-holiday .day-number{color:#fff}
-    .s-holiday.sunday .day-number{color:#ffcdd2}
-    .s-convocacao{background:#8E24AA;color:#fff}
-    .s-convocacao .day-number{color:#fff}
-    .s-convocacao.sunday .day-number{color:#e1bee7}
+    /* Shift colors — medium tones (Shifter-style) */
+    .s-morning   {background:#FFF176;color:#5D4000}
+    .s-morning .day-number{color:#5D4000}
+    .s-morning.sunday .day-number{color:#a07000}
+    .s-afternoon {background:#F48FB1;color:#880033}
+    .s-afternoon .day-number{color:#880033}
+    .s-afternoon.sunday .day-number{color:#ad1457}
+    .s-night     {background:#B39DDB;color:#311B92}
+    .s-night .day-number{color:#311B92}
+    .s-night.sunday .day-number{color:#4527a0}
+    .s-off       {background:#A5D6A7;color:#1B5E20}
+    .s-off .day-number{color:#1B5E20}
+    .s-off.sunday .day-number{color:#c62828}
+    .s-vacation  {background:#81D4FA;color:#01579B}
+    .s-vacation .day-number{color:#01579B}
+    .s-vacation.sunday .day-number{color:#0277bd}
+    .s-holiday   {background:#EF9A9A;color:#B71C1C}
+    .s-holiday .day-number{color:#7f0000}
+    .s-holiday.sunday .day-number{color:#c62828}
+    .s-convocacao{background:#CE93D8;color:#4A148C}
+    .s-convocacao .day-number{color:#4A148C}
+    .s-convocacao.sunday .day-number{color:#6a1b9a}
     .day-cell.today.s-morning,.day-cell.today.s-afternoon,.day-cell.today.s-night,
-    .day-cell.today.s-vacation,.day-cell.today.s-holiday,.day-cell.today.s-convocacao{box-shadow:0 0 0 3px #fff,0 0 0 5px #007aff}
+    .day-cell.today.s-vacation,.day-cell.today.s-holiday,.day-cell.today.s-convocacao,
     .day-cell.today.s-off{box-shadow:0 0 0 2.5px #007aff}
 
     /* ── Summary ── */
@@ -225,6 +225,7 @@
       <button class="nav-btn" onclick="changeMonth(1)">›</button>
     </div>
     <div style="display:flex;gap:4px;align-items:center">
+      <button class="share-btn" onclick="exportPDF()" title="Exportar PDF do mês">📄</button>
       <button class="share-btn" onclick="shareMonth()" title="Compartilhar escala do mês">📤</button>
       <button class="nav-btn" onclick="goToday()" style="font-size:14px;font-weight:600">Hoje</button>
     </div>
@@ -238,13 +239,13 @@
   <!-- Calendar tab -->
   <div id="tab-calendar">
     <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#f9a825"></div>Manhã</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ef6c00"></div>Tarde</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#3949ab"></div>Noite</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#bdbdbd"></div>Folga</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#43a047"></div>Férias</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div>Feriado</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#8e24aa"></div>Convocação</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FFF176;border:1px solid #c8a800"></div>Manhã</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F48FB1;border:1px solid #c2185b"></div>Tarde</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#B39DDB;border:1px solid #7e57c2"></div>Noite</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#A5D6A7;border:1px solid #388e3c"></div>Folga</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#81D4FA;border:1px solid #0288d1"></div>Férias</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#EF9A9A;border:1px solid #c62828"></div>Feriado</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#CE93D8;border:1px solid #7b1fa2"></div>Convocação</div>
     </div>
     <div class="calendar">
       <div class="weekdays">
@@ -421,15 +422,6 @@
         <div class="settings-row" id="night-row-1"><label>🌙 Noite — início</label><input type="time" id="t-n-start" value="23:00"></div>
         <div class="settings-row" id="night-row-2"><label>🌙 Noite — fim</label><input type="time" id="t-n-end" value="07:00"></div>
       </div>
-      <div class="section-label">Feriados automáticos</div>
-      <div class="settings-card">
-        <div class="settings-row">
-          <label>🇧🇷 Feriados nacionais</label>
-          <span class="settings-value" id="holidays-status">—</span>
-        </div>
-      </div>
-      <button class="save-btn" id="load-holidays-btn" onclick="loadHolidays()" style="background:#e53935;margin-bottom:8px">🎉 Carregar Feriados</button>
-
       <button class="save-btn" onclick="saveSettings()">Salvar configurações</button>
       <button class="danger-btn" onclick="confirmReset()">Limpar alterações manuais</button>
     </div>
@@ -472,7 +464,6 @@ let S = {
   times:{...DEFAULT_TIMES},
   overrides:{},   // { "YYYY-MM-DD": { type, note, workedOnHoliday, convShift } }
   vacations:[],   // [{ id, name, start, end }]
-  holidays:{},    // { "YYYY-MM-DD": "Nome do feriado" } — auto-loaded
   year:new Date().getFullYear(), month:new Date().getMonth(),
   editing:null, convModalShift:null,
 };
@@ -483,8 +474,7 @@ let S = {
 function persist() {
   localStorage.setItem('escala4', JSON.stringify({
     type:S.type, cycleStart:S.cycleStart, firstShift:S.firstShift,
-    times:S.times, overrides:S.overrides, vacations:S.vacations,
-    holidays:S.holidays, holidaysLoaded:S.holidaysLoaded
+    times:S.times, overrides:S.overrides, vacations:S.vacations
   }));
 }
 function hydrate() {
@@ -494,7 +484,6 @@ function hydrate() {
       S.type=d.type||'6x4'; S.cycleStart=d.cycleStart||null; S.firstShift=d.firstShift||'morning';
       S.times={...DEFAULT_TIMES,...(d.times||{})};
       S.overrides=d.overrides||{}; S.vacations=d.vacations||[];
-      S.holidays=d.holidays||{}; S.holidaysLoaded=d.holidaysLoaded||[]; S.holidayScope=d.holidayScope||'state';
     }
   } catch(e){}
 }
@@ -522,14 +511,8 @@ function effectiveShift(ds) {
   const ov=S.overrides[ds];
   if (ov && ov.type) return ov.type;
   if (S.vacations.find(v=>ds>=v.start&&ds<=v.end)) return 'vacation';
-  // Auto-holiday only marks if the cycle says it's a work day
-  if (S.holidays[ds]) {
-    const auto = autoShift(ds);
-    if (auto && auto !== 'off') return 'holiday';
-  }
   return autoShift(ds);
 }
-function holidayName(ds) { return S.holidays[ds] || null; }
 function isManual(ds){ return !!(S.overrides[ds]&&S.overrides[ds].type&&!S.overrides[ds].fromAuto); }
 
 //
@@ -579,11 +562,9 @@ function renderCalendar() {
     cell.className=`day-cell${shiftClass}${ds===todayStr?' today':''}${dow===0?' sunday':''}${manual?' modified':''}`;
     cell.onclick=()=>openDayModal(ds);
 
-    const hname = holidayName(ds);
     let inner=`<div class="day-number">${d}</div>`;
     if(m) {
-      const shortLabel = hname ? hname.split(' ').slice(0,2).join(' ') : m.short;
-      inner+=`<div class="day-shift"><span class="se">${m.emoji}</span><span>${shortLabel}</span></div>`;
+      inner+=`<div class="day-shift"><span class="se">${m.emoji}</span><span>${m.short}</span></div>`;
     }
     if(shift==='convocacao') {
       const cs=ov&&ov.convShift?META[ov.convShift]:null;
@@ -620,12 +601,10 @@ function openDayModal(ds) {
   const inVac=S.vacations.find(v=>ds>=v.start&&ds<=v.end);
 
   document.getElementById('modal-day-title').textContent=`${WDAYS[dt.getDay()]}, ${dispDate(ds)}`;
-  const hname = getHolidayName(ds);
   const subParts = [];
   if (S.cycleStart) subParts.push(`Ciclo ${S.type} · Auto: ${auto?META[auto].label:'—'}`);
   else subParts.push('Configure o ciclo em ⚙️');
-  if (hname) subParts.push(`🎉 ${hname}`);
-  else subParts.push('Toque num tipo para alterar');
+  subParts.push('Toque num tipo para alterar');
   document.getElementById('modal-day-sub').textContent = subParts.join(' · ');
 
   // Main options
@@ -897,7 +876,6 @@ function openSettings() {
   document.getElementById('t-n-start').value=S.times.nStart;
   document.getElementById('t-n-end').value=S.times.nEnd;
   updateTypeUI(S.type);
-  updateHolidaysStatus();
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 function setType(t) { S.type=t; updateTypeUI(t); }
@@ -939,46 +917,6 @@ function goToday() {
   const n=new Date(); S.year=n.getFullYear(); S.month=n.getMonth();
   showTab('calendar'); renderCalendar();
 }
-
-async function loadHolidays() {
-  const btn = document.getElementById('load-holidays-btn');
-  btn.textContent = '⏳ Carregando...';
-  btn.disabled = true;
-  S.holidays = {};
-  try {
-    const years = [new Date().getFullYear(), new Date().getFullYear() + 1];
-    const loaded = [];
-    for (const year of years) {
-      const res = await fetch(`https://brasilapi.com.br/api/feriados/v1/${year}`);
-      if (!res.ok) throw new Error('API error');
-      const data = await res.json();
-      data.forEach(h => { S.holidays[h.date] = h.name; });
-      loaded.push(year);
-    }
-    S.holidaysLoaded = loaded;
-    persist();
-    updateHolidaysStatus();
-    renderCalendar();
-    btn.textContent = '✅ Carregado!';
-    setTimeout(() => { btn.textContent = '🎉 Atualizar Feriados'; btn.disabled = false; }, 2000);
-  } catch(e) {
-    btn.textContent = '❌ Erro — tente novamente';
-    btn.disabled = false;
-  }
-}
-
-function updateHolidaysStatus() {
-  const el = document.getElementById('holidays-status');
-  if (!el) return;
-  const years = S.holidaysLoaded && S.holidaysLoaded.length ? S.holidaysLoaded.join(' e ') : null;
-  const count = Object.keys(S.holidays).length;
-  el.textContent = years ? `${count} feriados (${years})` : 'Não carregado';
-  const btn = document.getElementById('load-holidays-btn');
-  if (btn && years) btn.textContent = '🎉 Atualizar Feriados';
-}
-
-// Also show holiday name in day modal subtitle
-function getHolidayName(ds) { return S.holidays[ds] || null; }
 
 // MONTH PICKER
 function openMonthPicker() {
@@ -1075,6 +1013,71 @@ function shareMonth() {
       alert('Escala copiada! Cole no WhatsApp ou onde quiser.');
     });
   }
+}
+
+// EXPORT PDF
+function exportPDF() {
+  const META = buildMeta(S.times);
+  const year = S.year, month = S.month;
+  const total = new Date(year, month + 1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const WSHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const bgMap = {
+    morning:'#FFF176', afternoon:'#FFCCBC', night:'#D1C4E9',
+    off:'#B2DFDB', vacation:'#B3E5FC', holiday:'#FFCDD2', convocacao:'#E1BEE7'
+  };
+  const clMap = {
+    morning:'#6D4C00', afternoon:'#870000', night:'#311B92',
+    off:'#00544A', vacation:'#01579B', holiday:'#B71C1C', convocacao:'#4A148C'
+  };
+
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += '<td></td>';
+  for (let d = 1; d <= total; d++) {
+    const ds = `${year}-${p2(month+1)}-${p2(d)}`;
+    const dow = new Date(year, month, d).getDay();
+    const shift = effectiveShift(ds);
+    const m = shift ? META[shift] : null;
+    const bg = shift ? bgMap[shift] : '#f5f5f5';
+    const cl = shift ? clMap[shift] : '#333';
+    const sundayStyle = dow === 0 ? 'border-left:2px solid #e57373;' : '';
+    cells += `<td style="background:${bg};color:${cl};${sundayStyle}">
+      <div class="dn">${d}</div>
+      ${m ? `<div class="ds">${m.emoji} ${m.short}</div>` : ''}
+    </td>`;
+    if (dow === 6 && d < total) cells += '</tr><tr>';
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Escala ${MONTHS[month]} ${year}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,sans-serif;padding:16px;background:#fff}
+    h2{text-align:center;font-size:18px;margin-bottom:12px;color:#1c1c1e}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    th{text-align:center;font-size:11px;font-weight:700;color:#8e8e93;padding:4px 2px;border-bottom:1px solid #e5e5ea}
+    th:first-child{color:#e53935}
+    td{vertical-align:top;border:1px solid #e5e5ea;border-radius:6px;padding:4px;height:70px;font-size:10px}
+    .dn{font-weight:700;font-size:12px;margin-bottom:2px}
+    .ds{font-size:10px;line-height:1.3}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center}
+    .li{display:flex;align-items:center;gap:4px;font-size:10px}
+    .ld{width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}
+    @media print{body{padding:8px}@page{margin:10mm}}
+  </style></head><body>
+  <h2>📅 Escala — ${MONTHS[month]} ${year}</h2>
+  <table><thead><tr>${WSHORT.map((d,i)=>`<th style="${i===0?'color:#e53935':''}">${d}</th>`).join('')}</tr></thead>
+  <tbody><tr>${cells}</tr></tbody></table>
+  <div class="legend">
+    ${Object.entries(bgMap).map(([k,bg])=>`<div class="li"><div class="ld" style="background:${bg}"></div>${META[k].label}</div>`).join('')}
+  </div>
+  <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`;
+
+  const w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+  else { alert('Permita popups para gerar o PDF.'); }
 }
 
 //
