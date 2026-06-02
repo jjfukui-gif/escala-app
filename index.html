@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Escala de Turno</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Escala">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2f7;color:#1c1c1e;min-height:100vh;padding-bottom:80px}
+
+    /* ── Header ── */
+    .header{background:#fff;padding:12px 16px;padding-top:max(16px,env(safe-area-inset-top));border-bottom:1px solid #e5e5ea;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    .header-center{display:flex;align-items:center;gap:6px}
+    .nav-btn{background:none;border:none;font-size:22px;cursor:pointer;color:#007aff;padding:4px 8px;line-height:1}
+    .month-label{font-size:16px;font-weight:700;min-width:170px;text-align:center}
+    .icon-btn{background:none;border:none;font-size:22px;cursor:pointer;color:#007aff;padding:4px}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;background:#fff;border-bottom:1px solid #e5e5ea}
+    .tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:600;color:#8e8e93;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+    .tab.active{color:#007aff;border-bottom-color:#007aff}
+
+    /* ── Legend ── */
+    .legend{background:#fff;padding:6px 12px;border-bottom:1px solid #e5e5ea;display:flex;gap:10px;flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:3px;font-size:11px;color:#3c3c43}
+    .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+    /* ── Calendar ── */
+    .calendar{padding:6px}
+    .weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px}
+    .weekday{text-align:center;font-size:11px;font-weight:600;color:#8e8e93;padding:3px 0}
+    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+
+    /* Day cell — tap anywhere to edit */
+    .day-cell{background:#fff;border-radius:8px;padding:4px 3px;min-height:64px;cursor:pointer;position:relative;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s;-webkit-user-select:none;user-select:none}
+    .day-cell:active{transform:scale(.94);box-shadow:0 0 0 2px #007aff44}
+    .day-cell.empty{background:transparent;cursor:default;pointer-events:none}
+    .day-cell.today{box-shadow:0 0 0 2px #007aff}
+    .day-cell.today:active{box-shadow:0 0 0 2px #007aff,0 0 0 4px #007aff33}
+
+    /* Edit pencil hint — subtle, top-right */
+    .day-edit-hint{position:absolute;bottom:3px;right:3px;font-size:9px;color:#c7c7cc;line-height:1}
+    .day-cell.modified .day-edit-hint{color:#007aff}
+
+    .day-number{font-size:13px;font-weight:500;line-height:1.2;padding:1px 2px}
+    .day-cell.today .day-number{color:#007aff;font-weight:700}
+    .day-cell.sunday .day-number{color:#ff3b30}
+    .day-shift{font-size:10px;font-weight:700;padding:3px 2px;border-radius:5px;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;margin-top:2px;line-height:1.1}
+    .day-shift .se{font-size:14px}
+    .day-note-dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#007aff}
+
+    /* Convocação badge on calendar cell */
+    .day-conv-badge{position:absolute;top:2px;right:2px;background:#8e24aa;color:#fff;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4}
+
+    /* Shift colors */
+    .s-morning   {background:#fff8e1;color:#f57f17}
+    .s-afternoon {background:#fff3e0;color:#e65100}
+    .s-night     {background:#e8eaf6;color:#283593}
+    .s-off       {background:#f5f5f5;color:#9e9e9e}
+    .s-vacation  {background:#e8f5e9;color:#1b5e20}
+    .s-holiday   {background:#ffebee;color:#b71c1c}
+    .s-convocacao{background:#f3e5f5;color:#4a148c}
+
+    /* ── Summary ── */
+    .summary{background:#fff;border-top:1px solid #e5e5ea;padding:10px 16px;display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .summary-item{display:flex;flex-direction:column;align-items:center;min-width:56px;padding:0 8px}
+    .summary-item+.summary-item{border-left:1px solid #e5e5ea}
+    .summary-num{font-size:20px;font-weight:700}
+    .summary-lbl{font-size:9px;color:#8e8e93;margin-top:1px;white-space:nowrap}
+
+    /* ── FAB (Convocação button) ── */
+    .fab{position:fixed;bottom:max(24px,env(safe-area-inset-bottom));right:20px;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+    .fab-main{background:#8e24aa;color:#fff;border:none;border-radius:20px;padding:14px 18px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(142,36,170,.45);display:flex;align-items:center;gap:8px;white-space:nowrap;transition:transform .15s}
+    .fab-main:active{transform:scale(.94)}
+
+    /* ── Vacation view ── */
+    .vacation-view{padding:14px;display:none}
+    .vacation-view.active{display:block}
+    .vac-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .vac-header h2{font-size:17px;font-weight:700}
+    .add-btn{background:#007aff;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer}
+    .vac-list{display:flex;flex-direction:column;gap:8px}
+    .vac-card{background:#fff;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px}
+    .vac-icon{font-size:28px}
+    .vac-info{flex:1}
+    .vac-name{font-size:15px;font-weight:600}
+    .vac-dates{font-size:13px;color:#8e8e93;margin-top:2px}
+    .vac-days{font-size:13px;color:#43a047;font-weight:600;margin-top:2px}
+    .vac-delete{background:none;border:none;font-size:20px;color:#ff3b30;cursor:pointer;padding:4px}
+    .empty-vac{text-align:center;padding:40px 20px;color:#8e8e93}
+    .empty-vac .big{font-size:48px;margin-bottom:12px}
+    .empty-vac p{font-size:14px;line-height:1.5}
+
+    /* ── Modal ── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px)}
+    .modal-overlay.hidden{display:none}
+    .modal{background:#f2f2f7;border-radius:18px 18px 0 0;width:100%;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .modal-header{background:#fff;border-radius:18px 18px 0 0;padding:16px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e5e5ea;position:sticky;top:0;z-index:1}
+    .modal-title{font-size:16px;font-weight:700}
+    .modal-subtitle{font-size:12px;color:#8e8e93;margin-top:3px}
+    .modal-close{background:none;border:none;font-size:26px;cursor:pointer;color:#8e8e93;line-height:1;padding:0 0 0 8px;flex-shrink:0}
+    .modal-body{padding:14px}
+
+    /* ── Option list ── */
+    .section-label{font-size:12px;color:#8e8e93;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-left:4px}
+    .option-list{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:14px}
+    .option-item{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid #f2f2f7;transition:background .1s;-webkit-user-select:none;user-select:none}
+    .option-item:last-child{border-bottom:none}
+    .option-item:active{background:#f2f2f7}
+    .option-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+    .option-label{font-size:15px;font-weight:500}
+    .option-sub{font-size:12px;color:#8e8e93;margin-top:1px}
+    .option-check{color:#007aff;font-size:20px;font-weight:700;margin-left:4px}
+    .option-arrow{color:#c7c7cc;font-size:18px;margin-left:4px}
+
+    /* Sub-options (convocação period picker) */
+    .sub-options{background:#f9f0ff;border-radius:12px;overflow:hidden;margin-bottom:14px;border:1.5px solid #e1bee7}
+    .sub-header{padding:10px 16px;font-size:13px;font-weight:700;color:#6a1b9a;border-bottom:1px solid #e1bee7;display:flex;align-items:center;gap:6px}
+    .sub-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid #f3e5f5;transition:background .1s}
+    .sub-item:last-child{border-bottom:none}
+    .sub-item:active{background:#f3e5f5}
+    .sub-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .sub-label{flex:1;font-size:14px;font-weight:500}
+    .sub-time{font-size:12px;color:#8e8e93;margin-top:1px}
+    .sub-check{color:#8e24aa;font-size:18px;font-weight:700}
+
+    /* Notes */
+    .notes-card{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:14px}
+    .notes-header{padding:12px 16px 0;font-size:13px;color:#8e8e93}
+    .notes-input{width:100%;background:transparent;border:none;padding:8px 16px 12px;font-size:15px;outline:none;resize:none;height:70px;font-family:inherit;color:#1c1c1e}
+
+    /* Overtime */
+    .overtime-card{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+    .overtime-title{font-size:12px;color:#8e8e93;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .overtime-value{font-size:28px;font-weight:800;color:#ff3b30}
+    .overtime-desc{font-size:13px;color:#8e8e93;margin-top:4px;line-height:1.4}
+    .overtime-toggle{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #f2f2f7}
+    .toggle-label{font-size:15px}
+    .toggle-switch{position:relative;width:50px;height:30px;flex-shrink:0}
+    .toggle-switch input{opacity:0;width:0;height:0}
+    .toggle-slider{position:absolute;inset:0;background:#e5e5ea;border-radius:30px;transition:.3s;cursor:pointer}
+    .toggle-slider:before{content:'';position:absolute;width:26px;height:26px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+    input:checked+.toggle-slider{background:#34c759}
+    input:checked+.toggle-slider:before{transform:translateX(20px)}
+
+    /* Settings */
+    .seg-control{display:flex;background:#e5e5ea;border-radius:9px;padding:2px;margin-bottom:14px}
+    .seg-btn{flex:1;padding:7px 4px;border:none;background:none;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;color:#8e8e93;transition:all .2s}
+    .seg-btn.active{background:#fff;color:#1c1c1e;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+    .settings-card{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:14px}
+    .settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #f2f2f7}
+    .settings-row:last-child{border-bottom:none}
+    .settings-row label{font-size:15px;flex:1}
+    .settings-row input[type=date],.settings-row input[type=time],.settings-row select{font-size:15px;border:none;outline:none;color:#007aff;text-align:right;background:transparent;cursor:pointer;max-width:140px}
+    .settings-row .val{font-size:15px;color:#007aff}
+    .save-btn{width:100%;background:#007aff;color:#fff;border:none;border-radius:12px;padding:15px;font-size:17px;font-weight:700;cursor:pointer;margin-top:4px}
+    .save-btn:active{background:#005ec4}
+    .danger-btn{width:100%;background:#fff;color:#ff3b30;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px}
+    .info-box{background:#e8f4fd;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1a5276;line-height:1.5}
+    .info-purple{background:#f3e5f5;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#4a148c;line-height:1.5}
+
+    /* Vacation range */
+    .range-row{display:flex;gap:8px;margin-bottom:14px}
+    .range-col{flex:1;background:#fff;border-radius:12px;padding:12px 14px}
+    .range-col label{display:block;font-size:11px;color:#8e8e93;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+    .range-col input{width:100%;font-size:15px;border:none;outline:none;color:#007aff;background:transparent;cursor:pointer}
+    .vac-name-input{width:100%;background:#fff;border:none;border-radius:12px;padding:14px 16px;font-size:15px;outline:none;font-family:inherit;margin-bottom:14px}
+
+    /* Convocação quick modal */
+    .conv-date-input{width:100%;background:#fff;border:none;border-radius:12px;padding:14px 16px;font-size:15px;outline:none;color:#007aff;cursor:pointer;margin-bottom:14px;display:block}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <button class="icon-btn" onclick="openSettings()">⚙️</button>
+    <div class="header-center">
+      <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+      <span class="month-label" id="month-label"></span>
+      <button class="nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <button class="nav-btn" onclick="goToday()" style="font-size:14px;font-weight:600">Hoje</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('calendar')">📅 Calendário</div>
+    <div class="tab" onclick="showTab('vacation')">🏖️ Férias</div>
+  </div>
+
+  <!-- Calendar tab -->
+  <div id="tab-calendar">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f9a825"></div>Manhã</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef6c00"></div>Tarde</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3949ab"></div>Noite</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#bdbdbd"></div>Folga</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#43a047"></div>Férias</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div>Feriado</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8e24aa"></div>Convocação</div>
+    </div>
+    <div class="calendar">
+      <div class="weekdays">
+        <div class="weekday" style="color:#ff3b30">Dom</div>
+        <div class="weekday">Seg</div><div class="weekday">Ter</div>
+        <div class="weekday">Qua</div><div class="weekday">Qui</div>
+        <div class="weekday">Sex</div><div class="weekday">Sáb</div>
+      </div>
+      <div class="days-grid" id="days-grid"></div>
+    </div>
+    <div class="summary" id="month-summary"></div>
+  </div>
+
+  <!-- Vacation tab -->
+  <div id="tab-vacation" class="vacation-view">
+    <div class="vac-header">
+      <h2>Períodos de Férias</h2>
+      <button class="add-btn" onclick="openVacationModal()">+ Adicionar</button>
+    </div>
+    <div class="vac-list" id="vac-list"></div>
+  </div>
+</div>
+
+<!-- FAB: Convocação rápida -->
+<div class="fab" id="fab" style="display:none">
+  <button class="fab-main" onclick="openConvocacaoModal()">
+    📢 Lançar Convocação
+  </button>
+</div>
+
+<!-- ══════════════ DAY MODAL ══════════════ -->
+<div class="modal-overlay hidden" id="day-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-day-title"></div>
+        <div class="modal-subtitle" id="modal-day-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('day-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Toque para alterar o dia</div>
+      <div class="option-list" id="shift-options"></div>
+
+      <!-- Convocação sub-picker (shown when conv selected) -->
+      <div id="conv-sub-picker" style="display:none">
+        <div class="section-label">Período da convocação</div>
+        <div class="sub-options" id="conv-sub-list"></div>
+      </div>
+
+      <div class="notes-card">
+        <div class="notes-header">Observações</div>
+        <textarea class="notes-input" id="day-notes" placeholder="Adicionar anotação..."></textarea>
+      </div>
+      <div id="overtime-block"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CONVOCAÇÃO RÁPIDA MODAL ══════════════ -->
+<div class="modal-overlay hidden" id="conv-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📢 Lançar Convocação</div>
+        <div class="modal-subtitle">Dia de folga em que foi convocado</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('conv-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-purple">
+        Use quando for convocado em um dia que seria de <strong>folga</strong>. Selecione a data e o período trabalhado para calcular as horas extras.
+      </div>
+      <div class="section-label">Data da convocação</div>
+      <input type="date" class="conv-date-input" id="conv-date">
+
+      <div class="section-label">Período trabalhado</div>
+      <div class="sub-options" id="conv-modal-sub-list"></div>
+
+      <div id="conv-modal-overtime" style="margin-top:14px"></div>
+      <button class="save-btn" onclick="saveConvocacao()" style="background:#8e24aa">Salvar Convocação</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ VACATION MODAL ══════════════ -->
+<div class="modal-overlay hidden" id="vacation-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar Férias</div>
+      <button class="modal-close" onclick="closeModal('vacation-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box">
+        Todos os dias do período serão marcados como <strong>Férias</strong> no calendário automaticamente.
+      </div>
+      <div class="section-label">Nome / descrição (opcional)</div>
+      <input class="vac-name-input" type="text" id="vac-name" placeholder="Ex: Férias de julho, Recesso...">
+      <div class="section-label">Período</div>
+      <div class="range-row">
+        <div class="range-col"><label>Início</label><input type="date" id="vac-start"></div>
+        <div class="range-col"><label>Fim</label><input type="date" id="vac-end"></div>
+      </div>
+      <button class="save-btn" onclick="saveVacation()">Salvar Férias</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SETTINGS MODAL ══════════════ -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Configurações da Escala</div>
+      <button class="modal-close" onclick="closeModal('settings-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box">
+        Configure sua escala aqui. Cada pessoa define suas próprias datas e horários — os dados ficam salvos somente neste dispositivo.
+      </div>
+      <div class="section-label">Tipo de escala</div>
+      <div class="seg-control" id="type-seg">
+        <button class="seg-btn active" data-t="6x4" onclick="setType('6x4')">6×4 (2M · 2T · 2N)</button>
+        <button class="seg-btn" data-t="6x3" onclick="setType('6x3')">6×3 (3M · 3T)</button>
+      </div>
+      <div class="section-label">Início do ciclo</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <label>Data de início</label>
+          <input type="date" id="s-start-date">
+        </div>
+        <div class="settings-row">
+          <label>Turno nessa data</label>
+          <select id="s-first-shift">
+            <option value="morning">Manhã</option>
+            <option value="afternoon">Tarde</option>
+            <option value="night" id="night-opt">Noite</option>
+            <option value="off">Folga</option>
+          </select>
+        </div>
+      </div>
+      <div class="section-label">Horários dos turnos</div>
+      <div class="settings-card">
+        <div class="settings-row"><label>🌅 Manhã — início</label><input type="time" id="t-m-start" value="07:00"></div>
+        <div class="settings-row"><label>🌅 Manhã — fim</label><input type="time" id="t-m-end" value="15:30"></div>
+        <div class="settings-row"><label>🌆 Tarde — início</label><input type="time" id="t-a-start" value="15:00"></div>
+        <div class="settings-row"><label>🌆 Tarde — fim</label><input type="time" id="t-a-end" value="23:18"></div>
+        <div class="settings-row" id="night-row-1"><label>🌙 Noite — início</label><input type="time" id="t-n-start" value="23:00"></div>
+        <div class="settings-row" id="night-row-2"><label>🌙 Noite — fim</label><input type="time" id="t-n-end" value="07:00"></div>
+      </div>
+      <button class="save-btn" onclick="saveSettings()">Salvar configurações</button>
+      <button class="danger-btn" onclick="confirmReset()">Limpar alterações manuais</button>
+    </div>
+  </div>
+</div>
+
+<script>
+//
+//  CONSTANTS
+//
+const CYCLE = {
+  '6x4': { len:10, pattern:['morning','morning','afternoon','afternoon','night','night','off','off','off','off'] },
+  '6x3': { len:9,  pattern:['morning','morning','morning','afternoon','afternoon','afternoon','off','off','off'] }
+};
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const WDAYS  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const DEFAULT_TIMES = { mStart:'07:00', mEnd:'15:30', aStart:'15:00', aEnd:'23:18', nStart:'23:00', nEnd:'07:00' };
+
+function buildMeta(times) {
+  function hrs(s, e) {
+    const [sh,sm]=s.split(':').map(Number), [eh,em]=e.split(':').map(Number);
+    let d=(eh*60+em)-(sh*60+sm); if(d<=0)d+=1440; return d/60;
+  }
+  return {
+    morning:    { label:'Manhã',      short:'Manhã',  emoji:'🌅', dot:'#f9a825', bg:'#fff8e1', color:'#f57f17', hours:hrs(times.mStart,times.mEnd),  ts:`${times.mStart}–${times.mEnd}` },
+    afternoon:  { label:'Tarde',      short:'Tarde',  emoji:'🌆', dot:'#ef6c00', bg:'#fff3e0', color:'#e65100', hours:hrs(times.aStart,times.aEnd),  ts:`${times.aStart}–${times.aEnd}` },
+    night:      { label:'Noite',      short:'Noite',  emoji:'🌙', dot:'#3949ab', bg:'#e8eaf6', color:'#283593', hours:hrs(times.nStart,times.nEnd),  ts:`${times.nStart}–${times.nEnd}` },
+    off:        { label:'Folga',      short:'Folga',  emoji:'😴', dot:'#bdbdbd', bg:'#f5f5f5', color:'#9e9e9e', hours:0, ts:'—' },
+    vacation:   { label:'Férias',     short:'Férias', emoji:'🏖️', dot:'#43a047', bg:'#e8f5e9', color:'#2e7d32', hours:0, ts:'—' },
+    holiday:    { label:'Feriado',    short:'Feriado',emoji:'🎉', dot:'#e53935', bg:'#ffebee', color:'#c62828', hours:0, ts:'—' },
+    convocacao: { label:'Convocação', short:'Conv.',  emoji:'📢', dot:'#8e24aa', bg:'#f3e5f5', color:'#6a1b9a', hours:0, ts:'—' },
+  };
+}
+
+//
+//  STATE
+//
+let S = {
+  type:'6x4', cycleStart:null, firstShift:'morning',
+  times:{...DEFAULT_TIMES},
+  overrides:{},   // { "YYYY-MM-DD": { type, note, workedOnHoliday, convShift } }
+  vacations:[],   // [{ id, name, start, end }]
+  year:new Date().getFullYear(), month:new Date().getMonth(),
+  editing:null, convModalShift:null,
+};
+
+//
+//  STORAGE
+//
+function persist() {
+  localStorage.setItem('escala4', JSON.stringify({
+    type:S.type, cycleStart:S.cycleStart, firstShift:S.firstShift,
+    times:S.times, overrides:S.overrides, vacations:S.vacations
+  }));
+}
+function hydrate() {
+  try {
+    const d = JSON.parse(localStorage.getItem('escala4') || localStorage.getItem('escala3') || 'null');
+    if (d) {
+      S.type=d.type||'6x4'; S.cycleStart=d.cycleStart||null; S.firstShift=d.firstShift||'morning';
+      S.times={...DEFAULT_TIMES,...(d.times||{})};
+      S.overrides=d.overrides||{}; S.vacations=d.vacations||[];
+    }
+  } catch(e){}
+}
+
+//
+//  DATE HELPERS
+//
+function pd(s){ const[y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function fd(dt){ return `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`; }
+function p2(n){ return String(n).padStart(2,'0'); }
+function diff(a,b){ return Math.round((pd(b)-pd(a))/86400000); }
+function dispDate(ds){ const dt=pd(ds); return `${dt.getDate()} de ${MONTHS[dt.getMonth()]} de ${dt.getFullYear()}`; }
+function hFmt(h){ const t=Math.round(h*60),hh=Math.floor(t/60),mm=t%60; return mm?`${hh}h${p2(mm)}`:`${hh}h`; }
+
+//
+//  CYCLE
+//
+function autoShift(ds) {
+  if (!S.cycleStart) return null;
+  const c=CYCLE[S.type], si=c.pattern.indexOf(S.firstShift);
+  const pos=((diff(S.cycleStart,ds)+si)%c.len+c.len)%c.len;
+  return c.pattern[pos];
+}
+function effectiveShift(ds) {
+  const ov=S.overrides[ds];
+  if (ov && ov.type) return ov.type;
+  if (S.vacations.find(v=>ds>=v.start&&ds<=v.end)) return 'vacation';
+  return autoShift(ds);
+}
+function isManual(ds){ return !!(S.overrides[ds]&&S.overrides[ds].type&&!S.overrides[ds].fromAuto); }
+
+//
+//  TABS & FAB
+//
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach((el,i)=>
+    el.classList.toggle('active',(i===0&&tab==='calendar')||(i===1&&tab==='vacation')));
+  document.getElementById('tab-calendar').style.display = tab==='calendar'?'':'none';
+  const vv=document.getElementById('tab-vacation');
+  vv.style.display=tab==='vacation'?'block':'none';
+  vv.classList.toggle('active',tab==='vacation');
+  document.getElementById('fab').style.display = S.cycleStart&&tab==='calendar' ? 'flex' : 'none';
+  if(tab==='vacation') renderVacations();
+}
+
+//
+//  CALENDAR
+//
+function renderCalendar() {
+  const {year,month}=S;
+  document.getElementById('month-label').textContent=`${MONTHS[month]} ${year}`;
+  const META=buildMeta(S.times);
+  const firstDow=new Date(year,month,1).getDay();
+  const total=new Date(year,month+1,0).getDate();
+  const todayStr=fd(new Date());
+  const grid=document.getElementById('days-grid');
+  grid.innerHTML='';
+  const counts={};
+  Object.keys(META).forEach(k=>counts[k]=0);
+
+  for(let i=0;i<firstDow;i++){
+    const el=document.createElement('div'); el.className='day-cell empty'; grid.appendChild(el);
+  }
+  for(let d=1;d<=total;d++){
+    const ds=`${year}-${p2(month+1)}-${p2(d)}`;
+    const dow=new Date(year,month,d).getDay();
+    const shift=effectiveShift(ds);
+    const m=shift?META[shift]:null;
+    const ov=S.overrides[ds];
+    const manual=isManual(ds)||!!(S.vacations.find(v=>ds>=v.start&&ds<=v.end));
+    if(shift)counts[shift]++;
+
+    const cell=document.createElement('div');
+    cell.className=`day-cell${ds===todayStr?' today':''}${dow===0?' sunday':''}${manual?' modified':''}`;
+    cell.onclick=()=>openDayModal(ds);
+
+    let inner=`<div class="day-number">${d}</div>`;
+    if(m) inner+=`<div class="day-shift s-${shift}"><span class="se">${m.emoji}</span><span>${m.short}</span></div>`;
+    if(shift==='convocacao') {
+      const cs=ov&&ov.convShift?META[ov.convShift]:null;
+      inner+=`<div class="day-conv-badge">${cs?cs.emoji:'📢'}</div>`;
+    }
+    if(ov&&ov.note) inner+=`<div class="day-note-dot"></div>`;
+    if(manual) inner+=`<div class="day-edit-hint">✏️</div>`;
+
+    cell.innerHTML=inner;
+    grid.appendChild(cell);
+  }
+  renderSummary(counts,META);
+  document.getElementById('fab').style.display = S.cycleStart&&S.currentTab!=='vacation' ? 'flex' : 'none';
+}
+
+function renderSummary(counts,META) {
+  const el=document.getElementById('month-summary');
+  const order=['morning','afternoon','night','off','vacation','holiday','convocacao'];
+  el.innerHTML=order.filter(k=>counts[k]>0).map(k=>`
+    <div class="summary-item">
+      <div class="summary-num" style="color:${META[k].dot}">${counts[k]}</div>
+      <div class="summary-lbl">${META[k].emoji} ${META[k].label}</div>
+    </div>`).join('');
+}
+
+//
+//  DAY MODAL
+//
+function openDayModal(ds) {
+  S.editing=ds;
+  const META=buildMeta(S.times);
+  const dt=pd(ds), ov=S.overrides[ds]||{};
+  const cur=effectiveShift(ds), auto=autoShift(ds);
+  const inVac=S.vacations.find(v=>ds>=v.start&&ds<=v.end);
+
+  document.getElementById('modal-day-title').textContent=`${WDAYS[dt.getDay()]}, ${dispDate(ds)}`;
+  document.getElementById('modal-day-sub').textContent=S.cycleStart
+    ?`Ciclo ${S.type} · Auto: ${auto?META[auto].label:'—'} · Toque num tipo para alterar`
+    :'Configure o ciclo em ⚙️ para ver a escala automática';
+
+  // Main options
+  const opts=document.getElementById('shift-options');
+  opts.innerHTML='';
+
+  // Auto / vacation restore
+  if(S.cycleStart&&auto) {
+    const am=META[auto], isAuto=!isManual(ds)&&!inVac;
+    addOpt(opts,'🔄','#f2f2f7','#1c1c1e',`Automático — ${am.label}`,am.ts,isAuto,()=>restoreAuto(ds));
+  }
+  if(inVac) {
+    const vm=META.vacation, isAuto=!isManual(ds);
+    addOpt(opts,vm.emoji,vm.bg,vm.color,`Férias: ${inVac.name||'Período'}`,`${dispDate(inVac.start)} – ${dispDate(inVac.end)}`,isAuto,()=>restoreAuto(ds));
+  }
+
+  const shifts=S.type==='6x3'
+    ?['morning','afternoon','off','vacation','holiday','convocacao']
+    :['morning','afternoon','night','off','vacation','holiday','convocacao'];
+
+  shifts.forEach(sh=>{
+    const sm=META[sh], selected=isManual(ds)&&cur===sh;
+    const isConv=sh==='convocacao';
+    addOpt(opts,sm.emoji,sm.bg,sm.color,sm.label,
+      isConv?'Escolha o período trabalhado →':(sm.ts!=='—'?sm.ts:''),
+      selected, ()=>pickShift(ds,sh), isConv&&!selected);
+  });
+
+  // Convocação sub-picker
+  renderConvSubPicker(ds, cur, ov, META);
+
+  document.getElementById('day-notes').value=ov.note||'';
+  renderOvertime(ds,cur,auto,ov,META);
+  document.getElementById('day-modal').classList.remove('hidden');
+}
+
+function renderConvSubPicker(ds, cur, ov, META) {
+  const picker=document.getElementById('conv-sub-picker');
+  const list=document.getElementById('conv-sub-list');
+  if(cur!=='convocacao') { picker.style.display='none'; return; }
+  picker.style.display='block';
+  const shifts=S.type==='6x3'?['morning','afternoon']:['morning','afternoon','night'];
+  list.innerHTML='';
+  const selShift=ov.convShift||null;
+  shifts.forEach(sh=>{
+    const m=META[sh];
+    const div=document.createElement('div');
+    div.className='sub-item';
+    div.onclick=()=>{ saveConvShift(ds,sh); };
+    div.innerHTML=`
+      <div class="sub-dot" style="background:${m.bg};color:${m.color}">${m.emoji}</div>
+      <div style="flex:1"><div class="sub-label">${m.label}</div><div class="sub-time">${m.ts} · ${hFmt(m.hours)}</div></div>
+      ${selShift===sh?'<span class="sub-check">✓</span>':''}`;
+    list.appendChild(div);
+  });
+  // Header
+  list.insertAdjacentHTML('afterbegin',`<div class="sub-header">📢 Qual período foi convocado?</div>`);
+}
+
+function saveConvShift(ds, sh) {
+  S.overrides[ds]=S.overrides[ds]||{};
+  S.overrides[ds].convShift=sh;
+  persist();
+  const META=buildMeta(S.times);
+  const cur=effectiveShift(ds), ov=S.overrides[ds];
+  renderConvSubPicker(ds,cur,ov,META);
+  renderOvertime(ds,cur,autoShift(ds),ov,META);
+  renderCalendar();
+}
+
+function addOpt(container,emoji,bg,color,label,sub,checked,fn,hasArrow) {
+  const div=document.createElement('div');
+  div.className='option-item';
+  div.onclick=fn;
+  div.innerHTML=`
+    <div class="option-dot" style="background:${bg};color:${color}">${emoji}</div>
+    <div style="flex:1">
+      <div class="option-label">${label}</div>
+      ${sub?`<div class="option-sub">${sub}</div>`:''}
+    </div>
+    ${checked?'<span class="option-check">✓</span>':''}
+    ${hasArrow&&!checked?'<span class="option-arrow">›</span>':''}`;
+  container.appendChild(div);
+}
+
+function pickShift(ds, sh) {
+  const note=document.getElementById('day-notes').value;
+  const prev=S.overrides[ds]||{};
+  S.overrides[ds]={ type:sh, note, workedOnHoliday:prev.workedOnHoliday, convShift:prev.convShift };
+  persist();
+  openDayModal(ds);
+  renderCalendar();
+}
+
+function restoreAuto(ds) {
+  const note=document.getElementById('day-notes').value;
+  if(note) { S.overrides[ds]={ type:null, note, fromAuto:true }; }
+  else { delete S.overrides[ds]; }
+  persist(); openDayModal(ds); renderCalendar();
+}
+
+function renderOvertime(ds, cur, auto, ov, META) {
+  const el=document.getElementById('overtime-block');
+  if(cur==='holiday') {
+    const base=auto&&auto!=='off'?META[auto]:null;
+    const worked=ov.workedOnHoliday??false;
+    el.innerHTML=`<div class="overtime-card">
+      <div class="overtime-title">⏱ Hora Extra — Feriado</div>
+      ${base
+        ?`<div class="overtime-value">${worked?hFmt(base.hours):'0h'}</div>
+          <div class="overtime-desc">${worked?`${hFmt(base.hours)} a registrar · turno de ${base.label} (${base.ts})`:'Marque abaixo se trabalhou neste feriado'}</div>
+          <div class="overtime-toggle">
+            <span class="toggle-label">Trabalhei neste feriado</span>
+            <label class="toggle-switch"><input type="checkbox" id="worked-toggle" ${worked?'checked':''}
+              onchange="toggleWorked('${ds}',this.checked)"><span class="toggle-slider"></span></label>
+          </div>`
+        :`<div class="overtime-value" style="font-size:18px">Folga no ciclo</div>
+          <div class="overtime-desc">Se foi convocado use "Convocação" para registrar.</div>`
+      }
+    </div>`;
+    return;
+  }
+  if(cur==='convocacao') {
+    const cs=ov.convShift?META[ov.convShift]:null;
+    el.innerHTML=`<div class="overtime-card">
+      <div class="overtime-title">📢 Hora Extra — Convocação</div>
+      ${cs
+        ?`<div class="overtime-value">${hFmt(cs.hours)}</div>
+          <div class="overtime-desc">Período: ${cs.label} · ${cs.ts}</div>`
+        :`<div class="overtime-value" style="font-size:16px">Escolha o período acima</div>
+          <div class="overtime-desc">Selecione o turno em que foi convocado para calcular as horas extras.</div>`
+      }
+    </div>`;
+    return;
+  }
+  el.innerHTML='';
+}
+
+function toggleWorked(ds, checked) {
+  S.overrides[ds]=S.overrides[ds]||{};
+  S.overrides[ds].workedOnHoliday=checked;
+  persist();
+  const META=buildMeta(S.times);
+  renderOvertime(ds,effectiveShift(ds),autoShift(ds),S.overrides[ds],META);
+}
+
+function closeModal(id) {
+  if(id==='day-modal'&&S.editing) {
+    const note=document.getElementById('day-notes').value.trim();
+    const ds=S.editing, ov=S.overrides[ds]||{};
+    if(note) { S.overrides[ds]={...ov,note}; }
+    else if(!ov.type&&!ov.workedOnHoliday&&!ov.convShift) { delete S.overrides[ds]; }
+    else if(ov.note) { S.overrides[ds]={...ov,note:''}; }
+    persist(); renderCalendar(); S.editing=null;
+  }
+  document.getElementById(id).classList.add('hidden');
+}
+
+//
+//  CONVOCAÇÃO MODAL (rápido)
+//
+let convModalShift=null;
+
+function openConvocacaoModal() {
+  convModalShift=null;
+  document.getElementById('conv-date').value=fd(new Date());
+  renderConvModalSubs();
+  document.getElementById('conv-modal-overtime').innerHTML='';
+  document.getElementById('conv-modal').classList.remove('hidden');
+}
+
+function renderConvModalSubs() {
+  const META=buildMeta(S.times);
+  const list=document.getElementById('conv-modal-sub-list');
+  const shifts=S.type==='6x3'?['morning','afternoon']:['morning','afternoon','night'];
+  list.innerHTML=`<div class="sub-header">📢 Qual período foi convocado?</div>`;
+  shifts.forEach(sh=>{
+    const m=META[sh];
+    const div=document.createElement('div');
+    div.className='sub-item';
+    div.onclick=()=>selectConvModalShift(sh);
+    div.innerHTML=`
+      <div class="sub-dot" style="background:${m.bg};color:${m.color}">${m.emoji}</div>
+      <div style="flex:1"><div class="sub-label">${m.label}</div><div class="sub-time">${m.ts} · ${hFmt(m.hours)}</div></div>
+      ${convModalShift===sh?'<span class="sub-check">✓</span>':''}`;
+    list.appendChild(div);
+  });
+}
+
+function selectConvModalShift(sh) {
+  convModalShift=sh;
+  renderConvModalSubs();
+  const META=buildMeta(S.times);
+  const m=META[sh];
+  document.getElementById('conv-modal-overtime').innerHTML=`
+    <div class="overtime-card">
+      <div class="overtime-title">📢 Hora Extra a Registrar</div>
+      <div class="overtime-value">${hFmt(m.hours)}</div>
+      <div class="overtime-desc">${m.label} · ${m.ts}</div>
+    </div>`;
+}
+
+function saveConvocacao() {
+  const ds=document.getElementById('conv-date').value;
+  if(!ds){ alert('Selecione a data.'); return; }
+  if(!convModalShift){ alert('Selecione o período trabalhado.'); return; }
+  S.overrides[ds]={ type:'convocacao', convShift:convModalShift, note:S.overrides[ds]?.note||'' };
+  persist();
+  document.getElementById('conv-modal').classList.add('hidden');
+  // Navigate to that month
+  const dt=pd(ds); S.year=dt.getFullYear(); S.month=dt.getMonth();
+  renderCalendar();
+}
+
+//
+//  VACATIONS
+//
+function openVacationModal() {
+  document.getElementById('vac-name').value='';
+  document.getElementById('vac-start').value='';
+  document.getElementById('vac-end').value='';
+  document.getElementById('vacation-modal').classList.remove('hidden');
+}
+function saveVacation() {
+  const name=document.getElementById('vac-name').value.trim()||'Férias';
+  const start=document.getElementById('vac-start').value;
+  const end=document.getElementById('vac-end').value;
+  if(!start||!end){ alert('Selecione as datas de início e fim.'); return; }
+  if(start>end){ alert('A data de início deve ser antes do fim.'); return; }
+  S.vacations.push({ id:Date.now(), name, start, end });
+  persist(); closeModal('vacation-modal'); renderVacations(); renderCalendar();
+}
+function deleteVacation(id) {
+  if(!confirm('Remover este período de férias?')) return;
+  S.vacations=S.vacations.filter(v=>v.id!==id);
+  persist(); renderVacations(); renderCalendar();
+}
+function renderVacations() {
+  const list=document.getElementById('vac-list');
+  if(!S.vacations.length) {
+    list.innerHTML=`<div class="empty-vac"><div class="big">🏖️</div>
+      <p>Nenhum período cadastrado.<br>Toque em <strong>+ Adicionar</strong> para lançar.</p></div>`;
+    return;
+  }
+  list.innerHTML=[...S.vacations].sort((a,b)=>a.start.localeCompare(b.start)).map(v=>{
+    const days=diff(v.start,v.end)+1;
+    return `<div class="vac-card">
+      <div class="vac-icon">🏖️</div>
+      <div class="vac-info">
+        <div class="vac-name">${v.name}</div>
+        <div class="vac-dates">${dispDate(v.start)} – ${dispDate(v.end)}</div>
+        <div class="vac-days">${days} dia${days>1?'s':''}</div>
+      </div>
+      <button class="vac-delete" onclick="deleteVacation(${v.id})">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+//
+//  SETTINGS
+//
+function openSettings() {
+  document.getElementById('s-start-date').value=S.cycleStart||'';
+  document.getElementById('s-first-shift').value=S.firstShift;
+  document.getElementById('t-m-start').value=S.times.mStart;
+  document.getElementById('t-m-end').value=S.times.mEnd;
+  document.getElementById('t-a-start').value=S.times.aStart;
+  document.getElementById('t-a-end').value=S.times.aEnd;
+  document.getElementById('t-n-start').value=S.times.nStart;
+  document.getElementById('t-n-end').value=S.times.nEnd;
+  updateTypeUI(S.type);
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function setType(t) { S.type=t; updateTypeUI(t); }
+function updateTypeUI(t) {
+  document.querySelectorAll('#type-seg .seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  const hide=t==='6x3';
+  document.getElementById('night-opt').disabled=hide;
+  document.getElementById('night-row-1').style.display=hide?'none':'';
+  document.getElementById('night-row-2').style.display=hide?'none':'';
+  if(hide&&document.getElementById('s-first-shift').value==='night')
+    document.getElementById('s-first-shift').value='morning';
+}
+function saveSettings() {
+  const start=document.getElementById('s-start-date').value;
+  if(!start){ alert('Selecione a data de início.'); return; }
+  S.cycleStart=start; S.firstShift=document.getElementById('s-first-shift').value;
+  S.times={ mStart:document.getElementById('t-m-start').value, mEnd:document.getElementById('t-m-end').value,
+    aStart:document.getElementById('t-a-start').value, aEnd:document.getElementById('t-a-end').value,
+    nStart:document.getElementById('t-n-start').value, nEnd:document.getElementById('t-n-end').value };
+  persist(); closeModal('settings-modal'); renderCalendar();
+  document.getElementById('fab').style.display='flex';
+}
+function confirmReset() {
+  if(confirm('Limpar todas as alterações manuais?')) {
+    S.overrides={}; persist(); closeModal('settings-modal'); renderCalendar();
+  }
+}
+
+//
+//  NAVIGATION
+//
+function changeMonth(d) {
+  S.month+=d;
+  if(S.month>11){S.month=0;S.year++;}
+  if(S.month<0){S.month=11;S.year--;}
+  renderCalendar();
+}
+function goToday() {
+  const n=new Date(); S.year=n.getFullYear(); S.month=n.getMonth();
+  showTab('calendar'); renderCalendar();
+}
+
+//
+//  INIT
+//
+hydrate();
+S.currentTab='calendar';
+showTab('calendar');
+renderCalendar();
+
+if(!S.cycleStart) {
+  setTimeout(()=>{
+    const grid=document.getElementById('days-grid');
+    const msg=document.createElement('div');
+    msg.style='grid-column:1/-1;padding:24px;text-align:center;color:#8e8e93';
+    msg.innerHTML=`<div style="font-size:40px;margin-bottom:10px">📅</div>
+      <div style="font-size:15px;font-weight:700;color:#1c1c1e;margin-bottom:6px">Configure sua escala</div>
+      <div style="font-size:13px;margin-bottom:14px;line-height:1.5">Toque em ⚙️ para definir o tipo de escala,<br>data de início e horários dos turnos.</div>
+      <button onclick="openSettings()" style="background:#007aff;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:15px;font-weight:600;cursor:pointer">Configurar agora</button>`;
+    grid.appendChild(msg);
+  },30);
+}
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
