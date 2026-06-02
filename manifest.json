@@ -2,7 +2,7 @@
   "name": "Escala de Turno",
   "short_name": "Escala",
   "description": "Calendário de escala de trabalho 6x4 e 6x3",
-  "start_url": "/",
+  "start_url": "/escala-app/",
   "display": "standalone",
   "background_color": "#f2f2f7",
   "theme_color": "#007aff",

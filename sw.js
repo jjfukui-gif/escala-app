@@ -1,5 +1,5 @@
 const CACHE = 'escala-v2';
-const FILES = ['/', '/index.html', '/manifest.json'];
+const FILES = ['/escala-app/', '/escala-app/index.html', '/escala-app/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
