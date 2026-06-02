@@ -38,35 +38,50 @@
     .weekday{text-align:center;font-size:11px;font-weight:600;color:#8e8e93;padding:3px 0}
     .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
 
-    /* Day cell — tap anywhere to edit */
-    .day-cell{background:#fff;border-radius:8px;padding:4px 3px;min-height:64px;cursor:pointer;position:relative;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s;-webkit-user-select:none;user-select:none}
-    .day-cell:active{transform:scale(.94);box-shadow:0 0 0 2px #007aff44}
+    /* Day cell — full color background */
+    .day-cell{background:#f0f0f5;border-radius:10px;padding:5px 4px;min-height:66px;cursor:pointer;position:relative;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s;-webkit-user-select:none;user-select:none}
+    .day-cell:active{transform:scale(.93)}
     .day-cell.empty{background:transparent;cursor:default;pointer-events:none}
-    .day-cell.today{box-shadow:0 0 0 2px #007aff}
-    .day-cell.today:active{box-shadow:0 0 0 2px #007aff,0 0 0 4px #007aff33}
+    .day-cell.today{box-shadow:0 0 0 2.5px #007aff}
 
-    /* Edit pencil hint — subtle, top-right */
-    .day-edit-hint{position:absolute;bottom:3px;right:3px;font-size:9px;color:#c7c7cc;line-height:1}
-    .day-cell.modified .day-edit-hint{color:#007aff}
+    /* Edit pencil hint */
+    .day-edit-hint{position:absolute;bottom:3px;right:3px;font-size:9px;opacity:.5;line-height:1}
 
-    .day-number{font-size:13px;font-weight:500;line-height:1.2;padding:1px 2px}
-    .day-cell.today .day-number{color:#007aff;font-weight:700}
+    .day-number{font-size:13px;font-weight:700;line-height:1.2;padding:1px 3px}
+    .day-cell.today .day-number{color:#007aff}
     .day-cell.sunday .day-number{color:#ff3b30}
-    .day-shift{font-size:10px;font-weight:700;padding:3px 2px;border-radius:5px;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;margin-top:2px;line-height:1.1}
-    .day-shift .se{font-size:14px}
-    .day-note-dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#007aff}
+    .day-shift{font-size:11px;font-weight:800;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.1}
+    .day-shift .se{font-size:18px}
+    .day-note-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.3)}
 
-    /* Convocação badge on calendar cell */
-    .day-conv-badge{position:absolute;top:2px;right:2px;background:#8e24aa;color:#fff;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4}
+    /* Convocação badge */
+    .day-conv-badge{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.25);color:#fff;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4}
 
-    /* Shift colors */
-    .s-morning   {background:#fff8e1;color:#f57f17}
-    .s-afternoon {background:#fff3e0;color:#e65100}
-    .s-night     {background:#e8eaf6;color:#283593}
-    .s-off       {background:#f5f5f5;color:#9e9e9e}
-    .s-vacation  {background:#e8f5e9;color:#1b5e20}
-    .s-holiday   {background:#ffebee;color:#b71c1c}
-    .s-convocacao{background:#f3e5f5;color:#4a148c}
+    /* Shift colors — full cell background */
+    .s-morning   {background:#FFB300;color:#fff}
+    .s-morning .day-number{color:#fff}
+    .s-morning.sunday .day-number{color:#ffe0b2}
+    .s-afternoon {background:#F4511E;color:#fff}
+    .s-afternoon .day-number{color:#fff}
+    .s-afternoon.sunday .day-number{color:#ffccbc}
+    .s-night     {background:#3949AB;color:#fff}
+    .s-night .day-number{color:#fff}
+    .s-night.sunday .day-number{color:#c5cae9}
+    .s-off       {background:#ECEFF1;color:#607D8B}
+    .s-off .day-number{color:#607D8B}
+    .s-off.sunday .day-number{color:#ff3b30}
+    .s-vacation  {background:#43A047;color:#fff}
+    .s-vacation .day-number{color:#fff}
+    .s-vacation.sunday .day-number{color:#c8e6c9}
+    .s-holiday   {background:#E53935;color:#fff}
+    .s-holiday .day-number{color:#fff}
+    .s-holiday.sunday .day-number{color:#ffcdd2}
+    .s-convocacao{background:#8E24AA;color:#fff}
+    .s-convocacao .day-number{color:#fff}
+    .s-convocacao.sunday .day-number{color:#e1bee7}
+    .day-cell.today.s-morning,.day-cell.today.s-afternoon,.day-cell.today.s-night,
+    .day-cell.today.s-vacation,.day-cell.today.s-holiday,.day-cell.today.s-convocacao{box-shadow:0 0 0 3px #fff,0 0 0 5px #007aff}
+    .day-cell.today.s-off{box-shadow:0 0 0 2.5px #007aff}
 
     /* ── Summary ── */
     .summary{background:#fff;border-top:1px solid #e5e5ea;padding:10px 16px;display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -406,6 +421,15 @@
         <div class="settings-row" id="night-row-1"><label>🌙 Noite — início</label><input type="time" id="t-n-start" value="23:00"></div>
         <div class="settings-row" id="night-row-2"><label>🌙 Noite — fim</label><input type="time" id="t-n-end" value="07:00"></div>
       </div>
+      <div class="section-label">Feriados automáticos</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <label>🇧🇷 Feriados nacionais</label>
+          <span class="settings-value" id="holidays-status">—</span>
+        </div>
+      </div>
+      <button class="save-btn" id="load-holidays-btn" onclick="loadHolidays()" style="background:#e53935;margin-bottom:8px">🎉 Carregar Feriados</button>
+
       <button class="save-btn" onclick="saveSettings()">Salvar configurações</button>
       <button class="danger-btn" onclick="confirmReset()">Limpar alterações manuais</button>
     </div>
@@ -448,6 +472,7 @@ let S = {
   times:{...DEFAULT_TIMES},
   overrides:{},   // { "YYYY-MM-DD": { type, note, workedOnHoliday, convShift } }
   vacations:[],   // [{ id, name, start, end }]
+  holidays:{},    // { "YYYY-MM-DD": "Nome do feriado" } — auto-loaded
   year:new Date().getFullYear(), month:new Date().getMonth(),
   editing:null, convModalShift:null,
 };
@@ -458,7 +483,8 @@ let S = {
 function persist() {
   localStorage.setItem('escala4', JSON.stringify({
     type:S.type, cycleStart:S.cycleStart, firstShift:S.firstShift,
-    times:S.times, overrides:S.overrides, vacations:S.vacations
+    times:S.times, overrides:S.overrides, vacations:S.vacations,
+    holidays:S.holidays, holidaysLoaded:S.holidaysLoaded
   }));
 }
 function hydrate() {
@@ -468,6 +494,7 @@ function hydrate() {
       S.type=d.type||'6x4'; S.cycleStart=d.cycleStart||null; S.firstShift=d.firstShift||'morning';
       S.times={...DEFAULT_TIMES,...(d.times||{})};
       S.overrides=d.overrides||{}; S.vacations=d.vacations||[];
+      S.holidays=d.holidays||{}; S.holidaysLoaded=d.holidaysLoaded||[]; S.holidayScope=d.holidayScope||'state';
     }
   } catch(e){}
 }
@@ -495,8 +522,14 @@ function effectiveShift(ds) {
   const ov=S.overrides[ds];
   if (ov && ov.type) return ov.type;
   if (S.vacations.find(v=>ds>=v.start&&ds<=v.end)) return 'vacation';
+  // Auto-holiday only marks if the cycle says it's a work day
+  if (S.holidays[ds]) {
+    const auto = autoShift(ds);
+    if (auto && auto !== 'off') return 'holiday';
+  }
   return autoShift(ds);
 }
+function holidayName(ds) { return S.holidays[ds] || null; }
 function isManual(ds){ return !!(S.overrides[ds]&&S.overrides[ds].type&&!S.overrides[ds].fromAuto); }
 
 //
@@ -542,11 +575,16 @@ function renderCalendar() {
     if(shift)counts[shift]++;
 
     const cell=document.createElement('div');
-    cell.className=`day-cell${ds===todayStr?' today':''}${dow===0?' sunday':''}${manual?' modified':''}`;
+    const shiftClass = shift ? ` s-${shift}` : '';
+    cell.className=`day-cell${shiftClass}${ds===todayStr?' today':''}${dow===0?' sunday':''}${manual?' modified':''}`;
     cell.onclick=()=>openDayModal(ds);
 
+    const hname = holidayName(ds);
     let inner=`<div class="day-number">${d}</div>`;
-    if(m) inner+=`<div class="day-shift s-${shift}"><span class="se">${m.emoji}</span><span>${m.short}</span></div>`;
+    if(m) {
+      const shortLabel = hname ? hname.split(' ').slice(0,2).join(' ') : m.short;
+      inner+=`<div class="day-shift"><span class="se">${m.emoji}</span><span>${shortLabel}</span></div>`;
+    }
     if(shift==='convocacao') {
       const cs=ov&&ov.convShift?META[ov.convShift]:null;
       inner+=`<div class="day-conv-badge">${cs?cs.emoji:'📢'}</div>`;
@@ -582,9 +620,13 @@ function openDayModal(ds) {
   const inVac=S.vacations.find(v=>ds>=v.start&&ds<=v.end);
 
   document.getElementById('modal-day-title').textContent=`${WDAYS[dt.getDay()]}, ${dispDate(ds)}`;
-  document.getElementById('modal-day-sub').textContent=S.cycleStart
-    ?`Ciclo ${S.type} · Auto: ${auto?META[auto].label:'—'} · Toque num tipo para alterar`
-    :'Configure o ciclo em ⚙️ para ver a escala automática';
+  const hname = getHolidayName(ds);
+  const subParts = [];
+  if (S.cycleStart) subParts.push(`Ciclo ${S.type} · Auto: ${auto?META[auto].label:'—'}`);
+  else subParts.push('Configure o ciclo em ⚙️');
+  if (hname) subParts.push(`🎉 ${hname}`);
+  else subParts.push('Toque num tipo para alterar');
+  document.getElementById('modal-day-sub').textContent = subParts.join(' · ');
 
   // Main options
   const opts=document.getElementById('shift-options');
@@ -855,6 +897,7 @@ function openSettings() {
   document.getElementById('t-n-start').value=S.times.nStart;
   document.getElementById('t-n-end').value=S.times.nEnd;
   updateTypeUI(S.type);
+  updateHolidaysStatus();
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 function setType(t) { S.type=t; updateTypeUI(t); }
@@ -896,6 +939,46 @@ function goToday() {
   const n=new Date(); S.year=n.getFullYear(); S.month=n.getMonth();
   showTab('calendar'); renderCalendar();
 }
+
+async function loadHolidays() {
+  const btn = document.getElementById('load-holidays-btn');
+  btn.textContent = '⏳ Carregando...';
+  btn.disabled = true;
+  S.holidays = {};
+  try {
+    const years = [new Date().getFullYear(), new Date().getFullYear() + 1];
+    const loaded = [];
+    for (const year of years) {
+      const res = await fetch(`https://brasilapi.com.br/api/feriados/v1/${year}`);
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      data.forEach(h => { S.holidays[h.date] = h.name; });
+      loaded.push(year);
+    }
+    S.holidaysLoaded = loaded;
+    persist();
+    updateHolidaysStatus();
+    renderCalendar();
+    btn.textContent = '✅ Carregado!';
+    setTimeout(() => { btn.textContent = '🎉 Atualizar Feriados'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.textContent = '❌ Erro — tente novamente';
+    btn.disabled = false;
+  }
+}
+
+function updateHolidaysStatus() {
+  const el = document.getElementById('holidays-status');
+  if (!el) return;
+  const years = S.holidaysLoaded && S.holidaysLoaded.length ? S.holidaysLoaded.join(' e ') : null;
+  const count = Object.keys(S.holidays).length;
+  el.textContent = years ? `${count} feriados (${years})` : 'Não carregado';
+  const btn = document.getElementById('load-holidays-btn');
+  if (btn && years) btn.textContent = '🎉 Atualizar Feriados';
+}
+
+// Also show holiday name in day modal subtitle
+function getHolidayName(ds) { return S.holidays[ds] || null; }
 
 // MONTH PICKER
 function openMonthPicker() {
