@@ -300,7 +300,6 @@
         <div class="notes-header">Observações</div>
         <textarea class="notes-input" id="day-notes" placeholder="Adicionar anotação..."></textarea>
       </div>
-      <div id="overtime-block"></div>
     </div>
   </div>
 </div>
@@ -381,6 +380,41 @@
   </div>
 </div>
 
+<!-- ══════════════ CYCLE OVERRIDE MODAL ══════════════ -->
+<div class="modal-overlay hidden" id="cycle-override-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📅 Redefinir ciclo</div>
+        <div class="modal-subtitle">O ciclo passa a contar a partir desta data</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('cycle-override-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box">
+        Use quando sua escala mudou de posição. O ciclo é recalculado a partir da data escolhida.
+      </div>
+      <div class="section-label">Data da mudança</div>
+      <div class="settings-card" style="margin-bottom:14px">
+        <div class="settings-row">
+          <label>Data</label>
+          <input type="date" id="co-date">
+        </div>
+        <div class="settings-row">
+          <label>Turno nessa data</label>
+          <select id="co-shift">
+            <option value="morning">Manhã</option>
+            <option value="afternoon">Tarde</option>
+            <option value="night" id="co-night-opt">Noite</option>
+            <option value="off">Folga</option>
+          </select>
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveCycleOverride()">Salvar redefinição</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ SETTINGS MODAL ══════════════ -->
 <div class="modal-overlay hidden" id="settings-modal">
   <div class="modal">
@@ -422,6 +456,10 @@
         <div class="settings-row" id="night-row-1"><label>🌙 Noite — início</label><input type="time" id="t-n-start" value="23:00"></div>
         <div class="settings-row" id="night-row-2"><label>🌙 Noite — fim</label><input type="time" id="t-n-end" value="07:00"></div>
       </div>
+      <div class="section-label">Redefinir ciclo a partir de uma data</div>
+      <div class="settings-card" id="cycle-overrides-list"></div>
+      <button class="save-btn" onclick="openCycleOverrideModal()" style="background:#5c6bc0;margin-bottom:8px">📅 Adicionar redefinição de ciclo</button>
+
       <button class="save-btn" onclick="saveSettings()">Salvar configurações</button>
       <button class="danger-btn" onclick="confirmReset()">Limpar alterações manuais</button>
     </div>
@@ -461,9 +499,10 @@ function buildMeta(times) {
 //
 let S = {
   type:'6x4', cycleStart:null, firstShift:'morning',
+  cycleOverrides:[],  // [{date, firstShift}] — redefine ciclo a partir de uma data
   times:{...DEFAULT_TIMES},
-  overrides:{},   // { "YYYY-MM-DD": { type, note, workedOnHoliday, convShift } }
-  vacations:[],   // [{ id, name, start, end }]
+  overrides:{},
+  vacations:[],
   year:new Date().getFullYear(), month:new Date().getMonth(),
   editing:null, convModalShift:null,
 };
@@ -474,6 +513,7 @@ let S = {
 function persist() {
   localStorage.setItem('escala4', JSON.stringify({
     type:S.type, cycleStart:S.cycleStart, firstShift:S.firstShift,
+    cycleOverrides:S.cycleOverrides,
     times:S.times, overrides:S.overrides, vacations:S.vacations
   }));
 }
@@ -482,6 +522,7 @@ function hydrate() {
     const d = JSON.parse(localStorage.getItem('escala4') || localStorage.getItem('escala3') || 'null');
     if (d) {
       S.type=d.type||'6x4'; S.cycleStart=d.cycleStart||null; S.firstShift=d.firstShift||'morning';
+      S.cycleOverrides=d.cycleOverrides||[];
       S.times={...DEFAULT_TIMES,...(d.times||{})};
       S.overrides=d.overrides||{}; S.vacations=d.vacations||[];
     }
@@ -503,8 +544,16 @@ function hFmt(h){ const t=Math.round(h*60),hh=Math.floor(t/60),mm=t%60; return m
 //
 function autoShift(ds) {
   if (!S.cycleStart) return null;
-  const c=CYCLE[S.type], si=c.pattern.indexOf(S.firstShift);
-  const pos=((diff(S.cycleStart,ds)+si)%c.len+c.len)%c.len;
+  // Verifica se existe redefinição de ciclo aplicável a esta data
+  let startDate = S.cycleStart, startShift = S.firstShift;
+  if (S.cycleOverrides && S.cycleOverrides.length) {
+    const applicable = S.cycleOverrides
+      .filter(o => o.date <= ds)
+      .sort((a,b) => b.date.localeCompare(a.date))[0];
+    if (applicable) { startDate = applicable.date; startShift = applicable.firstShift; }
+  }
+  const c=CYCLE[S.type], si=c.pattern.indexOf(startShift);
+  const pos=((diff(startDate,ds)+si)%c.len+c.len)%c.len;
   return c.pattern[pos];
 }
 function effectiveShift(ds) {
@@ -558,17 +607,19 @@ function renderCalendar() {
     if(shift)counts[shift]++;
 
     const cell=document.createElement('div');
-    const shiftClass = shift ? ` s-${shift}` : '';
+    // Convocação usa a cor do turno convocado
+    const colorShift = (shift==='convocacao' && ov && ov.convShift) ? ov.convShift : shift;
+    const shiftClass = colorShift ? ` s-${colorShift}` : '';
     cell.className=`day-cell${shiftClass}${ds===todayStr?' today':''}${dow===0?' sunday':''}${manual?' modified':''}`;
     cell.onclick=()=>openDayModal(ds);
 
     let inner=`<div class="day-number">${d}</div>`;
     if(m) {
-      inner+=`<div class="day-shift"><span class="se">${m.emoji}</span><span>${m.short}</span></div>`;
-    }
-    if(shift==='convocacao') {
-      const cs=ov&&ov.convShift?META[ov.convShift]:null;
-      inner+=`<div class="day-conv-badge">${cs?cs.emoji:'📢'}</div>`;
+      if(shift==='convocacao') {
+        inner+=`<div class="day-shift"><span class="se">📢</span><span>Conv.</span></div>`;
+      } else {
+        inner+=`<div class="day-shift"><span class="se">${m.emoji}</span><span>${m.short}</span></div>`;
+      }
     }
     if(ov&&ov.note) inner+=`<div class="day-note-dot"></div>`;
     if(manual) inner+=`<div class="day-edit-hint">✏️</div>`;
@@ -637,7 +688,6 @@ function openDayModal(ds) {
   renderConvSubPicker(ds, cur, ov, META);
 
   document.getElementById('day-notes').value=ov.note||'';
-  renderOvertime(ds,cur,auto,ov,META);
   document.getElementById('day-modal').classList.remove('hidden');
 }
 
@@ -671,7 +721,6 @@ function saveConvShift(ds, sh) {
   const META=buildMeta(S.times);
   const cur=effectiveShift(ds), ov=S.overrides[ds];
   renderConvSubPicker(ds,cur,ov,META);
-  renderOvertime(ds,cur,autoShift(ds),ov,META);
   renderCalendar();
 }
 
@@ -706,51 +755,6 @@ function restoreAuto(ds) {
   persist(); openDayModal(ds); renderCalendar();
 }
 
-function renderOvertime(ds, cur, auto, ov, META) {
-  const el=document.getElementById('overtime-block');
-  if(cur==='holiday') {
-    const base=auto&&auto!=='off'?META[auto]:null;
-    const worked=ov.workedOnHoliday??false;
-    el.innerHTML=`<div class="overtime-card">
-      <div class="overtime-title">⏱ Hora Extra — Feriado</div>
-      ${base
-        ?`<div class="overtime-value">${worked?hFmt(base.hours):'0h'}</div>
-          <div class="overtime-desc">${worked?`${hFmt(base.hours)} a registrar · turno de ${base.label} (${base.ts})`:'Marque abaixo se trabalhou neste feriado'}</div>
-          <div class="overtime-toggle">
-            <span class="toggle-label">Trabalhei neste feriado</span>
-            <label class="toggle-switch"><input type="checkbox" id="worked-toggle" ${worked?'checked':''}
-              onchange="toggleWorked('${ds}',this.checked)"><span class="toggle-slider"></span></label>
-          </div>`
-        :`<div class="overtime-value" style="font-size:18px">Folga no ciclo</div>
-          <div class="overtime-desc">Se foi convocado use "Convocação" para registrar.</div>`
-      }
-    </div>`;
-    return;
-  }
-  if(cur==='convocacao') {
-    const cs=ov.convShift?META[ov.convShift]:null;
-    el.innerHTML=`<div class="overtime-card">
-      <div class="overtime-title">📢 Hora Extra — Convocação</div>
-      ${cs
-        ?`<div class="overtime-value">${hFmt(cs.hours)}</div>
-          <div class="overtime-desc">Período: ${cs.label} · ${cs.ts}</div>`
-        :`<div class="overtime-value" style="font-size:16px">Escolha o período acima</div>
-          <div class="overtime-desc">Selecione o turno em que foi convocado para calcular as horas extras.</div>`
-      }
-    </div>`;
-    return;
-  }
-  el.innerHTML='';
-}
-
-function toggleWorked(ds, checked) {
-  S.overrides[ds]=S.overrides[ds]||{};
-  S.overrides[ds].workedOnHoliday=checked;
-  persist();
-  const META=buildMeta(S.times);
-  renderOvertime(ds,effectiveShift(ds),autoShift(ds),S.overrides[ds],META);
-}
-
 function closeModal(id) {
   if(id==='day-modal'&&S.editing) {
     const note=document.getElementById('day-notes').value.trim();
@@ -772,7 +776,6 @@ function openConvocacaoModal() {
   convModalShift=null;
   document.getElementById('conv-date').value=fd(new Date());
   renderConvModalSubs();
-  document.getElementById('conv-modal-overtime').innerHTML='';
   document.getElementById('conv-modal').classList.remove('hidden');
 }
 
@@ -797,14 +800,6 @@ function renderConvModalSubs() {
 function selectConvModalShift(sh) {
   convModalShift=sh;
   renderConvModalSubs();
-  const META=buildMeta(S.times);
-  const m=META[sh];
-  document.getElementById('conv-modal-overtime').innerHTML=`
-    <div class="overtime-card">
-      <div class="overtime-title">📢 Hora Extra a Registrar</div>
-      <div class="overtime-value">${hFmt(m.hours)}</div>
-      <div class="overtime-desc">${m.label} · ${m.ts}</div>
-    </div>`;
 }
 
 function saveConvocacao() {
@@ -876,7 +871,56 @@ function openSettings() {
   document.getElementById('t-n-start').value=S.times.nStart;
   document.getElementById('t-n-end').value=S.times.nEnd;
   updateTypeUI(S.type);
+  renderCycleOverrides();
   document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function renderCycleOverrides() {
+  const el = document.getElementById('cycle-overrides-list');
+  if (!el) return;
+  if (!S.cycleOverrides.length) {
+    el.innerHTML = '<div style="padding:12px 16px;font-size:13px;color:#8e8e93">Nenhuma redefinição cadastrada.</div>';
+    return;
+  }
+  const META = buildMeta(S.times);
+  const sorted = [...S.cycleOverrides].sort((a,b) => a.date.localeCompare(b.date));
+  el.innerHTML = sorted.map((o,i) => `
+    <div class="settings-row">
+      <div>
+        <div style="font-size:15px;font-weight:500">${dispDate(o.date)}</div>
+        <div style="font-size:12px;color:#8e8e93">Turno: ${META[o.firstShift]?.label||o.firstShift}</div>
+      </div>
+      <button onclick="deleteCycleOverride('${o.date}')" style="background:none;border:none;font-size:20px;color:#ff3b30;cursor:pointer">🗑️</button>
+    </div>`).join('');
+}
+
+function openCycleOverrideModal() {
+  document.getElementById('co-date').value = '';
+  document.getElementById('co-shift').value = 'morning';
+  document.getElementById('co-night-opt').disabled = S.type === '6x3';
+  document.getElementById('cycle-override-modal').classList.remove('hidden');
+}
+
+function saveCycleOverride() {
+  const date = document.getElementById('co-date').value;
+  const firstShift = document.getElementById('co-shift').value;
+  if (!date) { alert('Selecione a data.'); return; }
+  if (!S.cycleStart) { alert('Configure o início do ciclo primeiro.'); return; }
+  if (date <= S.cycleStart) { alert('A data deve ser posterior ao início do ciclo.'); return; }
+  // Substitui se já existe uma redefinição na mesma data
+  S.cycleOverrides = S.cycleOverrides.filter(o => o.date !== date);
+  S.cycleOverrides.push({ date, firstShift });
+  persist();
+  closeModal('cycle-override-modal');
+  renderCycleOverrides();
+  renderCalendar();
+}
+
+function deleteCycleOverride(date) {
+  S.cycleOverrides = S.cycleOverrides.filter(o => o.date !== date);
+  persist();
+  renderCycleOverrides();
+  renderCalendar();
 }
 function setType(t) { S.type=t; updateTypeUI(t); }
 function updateTypeUI(t) {
