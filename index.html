@@ -209,6 +209,19 @@
 
     /* Convocação quick modal */
     .conv-date-input{width:100%;background:#fff;border:none;border-radius:12px;padding:14px 16px;font-size:15px;outline:none;color:#007aff;cursor:pointer;margin-bottom:14px;display:block}
+
+    /* Agenda */
+    .agenda-card{background:#fff;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;margin-bottom:8px}
+    .agenda-date-col{display:flex;flex-direction:column;align-items:center;min-width:44px;background:#f2f2f7;border-radius:8px;padding:6px 4px}
+    .agenda-day{font-size:20px;font-weight:800;color:#1c1c1e;line-height:1}
+    .agenda-mon{font-size:10px;color:#8e8e93;text-transform:uppercase;font-weight:600}
+    .agenda-info{flex:1}
+    .agenda-title{font-size:15px;font-weight:600;color:#1c1c1e}
+    .agenda-time{font-size:13px;color:#8e8e93;margin-top:2px}
+    .agenda-shift{font-size:12px;font-weight:600;margin-top:3px}
+    .agenda-alert{font-size:11px;color:#007aff;margin-top:3px}
+    .agenda-delete{background:none;border:none;font-size:20px;color:#ff3b30;cursor:pointer;padding:4px;flex-shrink:0}
+    .agenda-dot{position:absolute;bottom:3px;left:3px;width:6px;height:6px;border-radius:50%;background:#007aff}
   </style>
 </head>
 <body>
@@ -234,6 +247,7 @@
   <div class="tabs">
     <div class="tab active" onclick="showTab('calendar')">📅 Calendário</div>
     <div class="tab" onclick="showTab('vacation')">🏖️ Férias</div>
+    <div class="tab" onclick="showTab('agenda')">📋 Agenda</div>
   </div>
 
   <!-- Calendar tab -->
@@ -257,6 +271,19 @@
       <div class="days-grid" id="days-grid"></div>
     </div>
     <div class="summary" id="month-summary"></div>
+  </div>
+
+  <!-- Agenda tab -->
+  <div id="tab-agenda" class="vacation-view">
+    <div class="vac-header">
+      <h2>Agenda</h2>
+      <button class="add-btn" onclick="openAgendaModal()">+ Adicionar</button>
+    </div>
+    <div id="agenda-notif-bar" style="display:none;background:#fff3cd;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#856404">
+      ⚠️ Ative as notificações para receber alertas dos compromissos.
+      <button onclick="requestNotifPermission()" style="margin-left:8px;background:#856404;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">Ativar</button>
+    </div>
+    <div class="vac-list" id="agenda-list"></div>
   </div>
 
   <!-- Vacation tab -->
@@ -380,6 +407,42 @@
   </div>
 </div>
 
+<!-- ══════════════ AGENDA MODAL ══════════════ -->
+<div class="modal-overlay hidden" id="agenda-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📋 Novo Compromisso</div>
+      <button class="modal-close" onclick="closeModal('agenda-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Compromisso</div>
+      <input class="vac-name-input" type="text" id="ag-title" placeholder="Ex: Consulta médica, Reunião...">
+      <div class="section-label">Data e horário</div>
+      <div class="range-row">
+        <div class="range-col"><label>Data</label><input type="date" id="ag-date"></div>
+        <div class="range-col"><label>Horário</label><input type="time" id="ag-time"></div>
+      </div>
+      <div class="section-label">Lembrete antecipado</div>
+      <div class="settings-card" style="margin-bottom:14px">
+        <div class="settings-row">
+          <label>Avisar antes</label>
+          <select id="ag-alert" style="font-size:15px;border:none;outline:none;color:#007aff;background:transparent;cursor:pointer">
+            <option value="0">Sem lembrete</option>
+            <option value="15">15 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+            <option value="60" selected>1 hora antes</option>
+            <option value="120">2 horas antes</option>
+            <option value="1440">1 dia antes</option>
+          </select>
+        </div>
+      </div>
+      <div class="section-label">Observação (opcional)</div>
+      <input class="vac-name-input" type="text" id="ag-note" placeholder="Ex: Levar exames, endereço...">
+      <button class="save-btn" onclick="saveAgenda()">Salvar compromisso</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ CYCLE OVERRIDE MODAL ══════════════ -->
 <div class="modal-overlay hidden" id="cycle-override-modal">
   <div class="modal">
@@ -499,10 +562,11 @@ function buildMeta(times) {
 //
 let S = {
   type:'6x4', cycleStart:null, firstShift:'morning',
-  cycleOverrides:[],  // [{date, firstShift}] — redefine ciclo a partir de uma data
+  cycleOverrides:[],
   times:{...DEFAULT_TIMES},
   overrides:{},
   vacations:[],
+  agenda:[],  // [{id, title, date, time, alertMin, note}]
   year:new Date().getFullYear(), month:new Date().getMonth(),
   editing:null, convModalShift:null,
 };
@@ -514,7 +578,8 @@ function persist() {
   localStorage.setItem('escala4', JSON.stringify({
     type:S.type, cycleStart:S.cycleStart, firstShift:S.firstShift,
     cycleOverrides:S.cycleOverrides,
-    times:S.times, overrides:S.overrides, vacations:S.vacations
+    times:S.times, overrides:S.overrides, vacations:S.vacations,
+    agenda:S.agenda
   }));
 }
 function hydrate() {
@@ -525,6 +590,7 @@ function hydrate() {
       S.cycleOverrides=d.cycleOverrides||[];
       S.times={...DEFAULT_TIMES,...(d.times||{})};
       S.overrides=d.overrides||{}; S.vacations=d.vacations||[];
+      S.agenda=d.agenda||[];
     }
   } catch(e){}
 }
@@ -569,13 +635,18 @@ function isManual(ds){ return !!(S.overrides[ds]&&S.overrides[ds].type&&!S.overr
 //
 function showTab(tab) {
   document.querySelectorAll('.tab').forEach((el,i)=>
-    el.classList.toggle('active',(i===0&&tab==='calendar')||(i===1&&tab==='vacation')));
+    el.classList.toggle('active',(i===0&&tab==='calendar')||(i===1&&tab==='vacation')||(i===2&&tab==='agenda')));
   document.getElementById('tab-calendar').style.display = tab==='calendar'?'':'none';
   const vv=document.getElementById('tab-vacation');
   vv.style.display=tab==='vacation'?'block':'none';
   vv.classList.toggle('active',tab==='vacation');
+  const av=document.getElementById('tab-agenda');
+  av.style.display=tab==='agenda'?'block':'none';
+  av.classList.toggle('active',tab==='agenda');
   document.getElementById('fab').style.display = S.cycleStart&&tab==='calendar' ? 'flex' : 'none';
   if(tab==='vacation') renderVacations();
+  if(tab==='agenda') renderAgenda();
+  S.currentTab=tab;
 }
 
 //
@@ -623,6 +694,7 @@ function renderCalendar() {
     }
     if(ov&&ov.note) inner+=`<div class="day-note-dot"></div>`;
     if(manual) inner+=`<div class="day-edit-hint">✏️</div>`;
+    if(S.agenda.some(a=>a.date===ds)) inner+=`<div class="agenda-dot"></div>`;
 
     cell.innerHTML=inner;
     grid.appendChild(cell);
@@ -1059,6 +1131,110 @@ function shareMonth() {
   }
 }
 
+// AGENDA
+function openAgendaModal(dateStr) {
+  document.getElementById('ag-title').value='';
+  document.getElementById('ag-date').value=dateStr||fd(new Date());
+  document.getElementById('ag-time').value='08:00';
+  document.getElementById('ag-alert').value='60';
+  document.getElementById('ag-note').value='';
+  document.getElementById('agenda-modal').classList.remove('hidden');
+}
+
+function saveAgenda() {
+  const title=document.getElementById('ag-title').value.trim();
+  const date=document.getElementById('ag-date').value;
+  const time=document.getElementById('ag-time').value;
+  const alertMin=parseInt(document.getElementById('ag-alert').value);
+  const note=document.getElementById('ag-note').value.trim();
+  if(!title){alert('Digite o nome do compromisso.');return;}
+  if(!date){alert('Selecione a data.');return;}
+  const item={id:Date.now(),title,date,time,alertMin,note};
+  S.agenda.push(item);
+  persist();
+  scheduleNotification(item);
+  closeModal('agenda-modal');
+  renderAgenda();
+  renderCalendar();
+}
+
+function deleteAgenda(id) {
+  if(!confirm('Remover este compromisso?'))return;
+  S.agenda=S.agenda.filter(a=>a.id!==id);
+  persist();
+  renderAgenda();
+  renderCalendar();
+}
+
+function renderAgenda() {
+  const list=document.getElementById('agenda-list');
+  const META=buildMeta(S.times);
+  const now=new Date();
+
+  // Verifica permissão de notificação
+  const bar=document.getElementById('agenda-notif-bar');
+  if(Notification.permission==='default') bar.style.display='block';
+  else bar.style.display='none';
+
+  if(!S.agenda.length){
+    list.innerHTML=`<div class="empty-vac"><div class="big">📋</div>
+      <p>Nenhum compromisso cadastrado.<br>Toque em <strong>+ Adicionar</strong> para lançar.</p></div>`;
+    return;
+  }
+  const sorted=[...S.agenda].sort((a,b)=>a.date===b.date?a.time.localeCompare(b.time):a.date.localeCompare(b.date));
+  list.innerHTML=sorted.map(a=>{
+    const dt=pd(a.date);
+    const shift=effectiveShift(a.date);
+    const m=shift?META[shift]:null;
+    const isPast=new Date(`${a.date}T${a.time||'00:00'}`)<now;
+    const alertTxt=a.alertMin>0?(a.alertMin>=1440?`Lembrete: 1 dia antes`:`Lembrete: ${a.alertMin>=60?a.alertMin/60+'h':a.alertMin+'min'} antes`):'Sem lembrete';
+    return `<div class="agenda-card" style="${isPast?'opacity:.6':''}">
+      <div class="agenda-date-col">
+        <div class="agenda-day">${dt.getDate()}</div>
+        <div class="agenda-mon">${MONTHS[dt.getMonth()].substring(0,3)}</div>
+      </div>
+      <div class="agenda-info">
+        <div class="agenda-title">${a.title}</div>
+        <div class="agenda-time">🕐 ${a.time||'—'} ${isPast?'· <span style="color:#ff3b30">Passou</span>':''}</div>
+        ${m?`<div class="agenda-shift" style="color:${m.dot}">${m.emoji} ${m.label}</div>`:''}
+        ${a.alertMin>0?`<div class="agenda-alert">🔔 ${alertTxt}</div>`:''}
+        ${a.note?`<div style="font-size:12px;color:#8e8e93;margin-top:2px">📝 ${a.note}</div>`:''}
+      </div>
+      <button class="agenda-delete" onclick="deleteAgenda(${a.id})">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+// NOTIFICAÇÕES
+function requestNotifPermission() {
+  Notification.requestPermission().then(p=>{
+    document.getElementById('agenda-notif-bar').style.display = p==='granted'?'none':'block';
+    if(p==='granted') {
+      S.agenda.forEach(scheduleNotification);
+      alert('Notificações ativadas! Você receberá alertas dos compromissos.');
+    }
+  });
+}
+
+function scheduleNotification(item) {
+  if(!item.alertMin||item.alertMin===0)return;
+  if(Notification.permission!=='granted')return;
+  if(!item.time)return;
+  const alertTime=new Date(`${item.date}T${item.time}`).getTime()-(item.alertMin*60000);
+  const delay=alertTime-Date.now();
+  if(delay<=0)return;
+  setTimeout(()=>{
+    new Notification(`📋 ${item.title}`,{
+      body:`Compromisso em ${item.alertMin>=60?item.alertMin/60+'h':item.alertMin+'min'} — ${item.time}${item.note?' · '+item.note:''}`,
+      icon:'icon-192.png'
+    });
+  },delay);
+}
+
+function scheduleAllNotifications() {
+  if(Notification.permission==='granted') S.agenda.forEach(scheduleNotification);
+}
+
 // EXPORT PDF
 function exportPDF() {
   const META = buildMeta(S.times);
@@ -1131,6 +1307,7 @@ hydrate();
 S.currentTab='calendar';
 showTab('calendar');
 renderCalendar();
+scheduleAllNotifications();
 
 if(!S.cycleStart) {
   setTimeout(()=>{
